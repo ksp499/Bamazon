@@ -10,14 +10,9 @@ var connection = mysql.createConnection({
 	database: 'bamazon'
 });
 
-connection.connect();
+var products = [];
 
-connection.query('SELECT item_id, product_name, department_name, price, stock_quantity FROM products', function(error, result) {
-	if(error) {
-		console.log(error);
-	}
-
-	var table = new Table({
+var table = new Table({
 		head: ['Item Id', 'Product Name', 'Department Name', 'Price', 'Stock Quantity'],
 		style: {
 			head: ['cyan'],
@@ -28,8 +23,14 @@ connection.query('SELECT item_id, product_name, department_name, price, stock_qu
          , 'bottom': '═' , 'bottom-mid': '╧' , 'bottom-left': '╚' , 'bottom-right': '╝'
          , 'left': '║' , 'left-mid': '╟' , 'mid': '─' , 'mid-mid': '┼'
          , 'right': '║' , 'right-mid': '╢' , 'middle': '│' }
-	});
+});
 
+connection.connect();
+
+connection.query('SELECT item_id, product_name, department_name, price, stock_quantity FROM products', function(error, result) {
+	if(error) {
+		console.log(error);
+	}
 
 	for (var i = 0; i < result.length; i++) {
 		table.push([ result[i].item_id, result[i].product_name, result[i].department_name, result[i].price, result[i].stock_quantity ]);
@@ -63,6 +64,23 @@ var prompt = function() {
 			}
 		}
 	}]).then(function(answer) {
-
+		connection.query('SELECT * FROM products where item_id = ?', answer.item_id, function(error, result) {
+			console.log('');
+			if(error) {
+				console.log(error, 'Can\'t find that item');;
+			}
+			if(result[0].stock_quantity < answer.quantity) {
+				console.log('Not enough product is available.');
+				connection.end();
+			} else {
+				var new_quantity = result[0].stock_quantity - answer.quantity;
+				var total_cost = result[0].price * answer.quantity;
+				connection.query('UPDATE products SET stock_quantity=? WHERE item_id=?;', [new_quantity, answer.item_id], function(error, result) {
+					console.log('Purchase successful !');
+					console.log('The total cost was $' + total_cost);
+					connection.end();
+				});
+			}
+		});
 	});
 }
